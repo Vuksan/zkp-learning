@@ -14,8 +14,8 @@ template HashTreeLeaf() {
 }
 
 // Creates a new merkle tree by hashing all leaves and calculating their parents.
-// Note: numLeaves should be an even number.
-template CreateMerkleTree(numLeaves, treeDepth) {
+// Note: numLeaves must be a power of 2.
+template CreateMerkleTree(numLeaves) {
     signal input leaves[numLeaves];
     signal output merkleRoot;
 
@@ -29,6 +29,14 @@ template CreateMerkleTree(numLeaves, treeDepth) {
     component isZero = IsZero();
     isZero.in <== numLeaves & (numLeaves - 1);
     isZero.out === 1;
+
+    // Find the tree depth
+    var treeDepth = 0;
+    var tmp = numLeaves;
+    while (tmp != 0) {
+        treeDepth++;
+        tmp >>= 1;
+    }
 
     signal merkleTree[treeDepth][numLeaves];
 
