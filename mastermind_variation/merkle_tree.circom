@@ -19,10 +19,16 @@ template CreateMerkleTree(numLeaves, treeDepth) {
     signal input leaves[numLeaves];
     signal output merkleRoot;
 
-    // Check if numLeaves is even
+    // Check if numLeaves is a power of 2
+    // We know that if a number is power of 2 
+    // it will only have a leading bit of 1 and the other bits will be 0
+    // so we check: (x != 0) && (x & (x - 1) == 0)
     component zeroCheck = IsZero();
-    zeroCheck.in <== numLeaves % 2;
-    zeroCheck.out === 1;
+    zeroCheck.in <== numLeaves;
+    zeroCheck.out === 0;
+    component isZero = IsZero();
+    isZero.in <== numLeaves & (numLeaves - 1);
+    isZero.out === 1;
 
     signal merkleTree[treeDepth][numLeaves];
 
