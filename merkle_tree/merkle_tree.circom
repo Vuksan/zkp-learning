@@ -84,3 +84,5 @@ template CreateMerkleTree(numLeaves) {
     merkleRoot <== merkleTree[treeDepth - 1][0];
     log("Merkle root is:", merkleRoot);
 }
+
+component main = CreateMerkleTree(8);
