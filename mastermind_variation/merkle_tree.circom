@@ -1,5 +1,6 @@
 pragma circom  2.0.0;
 
+include "node_modules/circomlib/circuits/comparators.circom";
 include "node_modules/circomlib/circuits/poseidon.circom";
 
 template HashTreeLeaf() {
@@ -12,11 +13,16 @@ template HashTreeLeaf() {
     out <== poseidon.out;
 }
 
+// Creates a new merkle tree by hashing all leaves and calculating their parents.
+// Note: numLeaves should be an even number.
 template CreateMerkleTree(numLeaves, treeDepth) {
     signal input leaves[numLeaves];
     signal output merkleRoot;
 
-    // TODO: If numLeaves is odd, duplicate the last leaf.
+    // Check if numLeaves is even
+    component zeroCheck = IsZero();
+    zeroCheck.in <== numLeaves % 2;
+    zeroCheck.out === 1;
 
     signal merkleTree[treeDepth][numLeaves];
 
