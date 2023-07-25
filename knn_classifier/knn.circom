@@ -83,78 +83,83 @@ template Checkprod(size, mod) {
     out <== prod[size - 1];
 }
 
-template KNN(treeSize, numAttrs, mod, treeDepth, kNeighbours) {
+template KNN(numElements, numAttrs, mod, treeDepth, kNeighbours) {
     signal input checksum;
     signal input checkprod;
-    signal input proofPaths[treeSize][treeDepth][1];
-    signal input proofIndices[treeSize][treeDepth][1];
+    signal input proofPaths[numElements][treeDepth];
+    signal input proofIndices[numElements][treeDepth];
     signal input commitment;
-    signal input sortedRows[treeSize][numAttrs + 1];
+    // sorted coordinates contain coordinate index as a first element, 
+    // then x,y,z coordinates and the class as the last element
+    signal input sortedCoordinates[numElements][numAttrs + 2];
     signal input x[numAttrs];
 
-    component checksumVerifier = Checksum(treeSize, mod);
-    for (var i = 0; i < treeSize; i++) {
-        checksumVerifier.arr[i] <== sortedRows[i][0];
+    signal output neighbours[kNeighbours][numAttrs + 2];
+
+    component checksumVerifier = Checksum(numElements, mod);
+    for (var i = 0; i < numElements; i++) {
+        checksumVerifier.arr[i] <== sortedCoordinates[i][0];
     }
     checksumVerifier.out === checksum;
 
-    component checkprodVerifier = Checkprod(treeSize, mod);
-    for (var i = 0; i < treeSize; i++) {
-        checkprodVerifier.arr[i] <== sortedRows[i][0];
+    component checkprodVerifier = Checkprod(numElements, mod);
+    for (var i = 0; i < numElements; i++) {
+        checkprodVerifier.arr[i] <== sortedCoordinates[i][0];
     }
     checkprodVerifier.out === checkprod;
 
-    component merkleProofs[treeSize];
-    component merkleLeafHashers[treeSize];
-    for (var i = 0; i < treeSize; i++) {
+    component merkleProofs[numElements];
+    component merkleLeafHashers[numElements];
+    for (var i = 0; i < numElements; i++) {
         merkleProofs[i] = MerkleTreeInclusionProof(treeDepth);
-        merkleLeafHashers[i] = Poseidon(numAttrs + 1);
+        merkleLeafHashers[i] = Poseidon(numAttrs + 2);
 
-        for (var j = 0; j < numAttrs + 1; j++) {
-            merkleLeafHashers[i].inputs[j] <== sortedRows[i][j];
+        for (var j = 0; j < numAttrs + 2; j++) {
+            merkleLeafHashers[i].inputs[j] <== sortedCoordinates[i][j];
         }
         merkleProofs[i].leaf <== merkleLeafHashers[i].out;
 
         for (var j = 0; j < treeDepth; j++) {
-            merkleProofs[i].path_index[j] <== proofIndices[i][j][0];
-            merkleProofs[i].path_elements[j][0] <== proofPaths[i][j][0];
+            merkleProofs[i].path_index[j] <== proofIndices[i][j];
+            merkleProofs[i].path_elements[j][0] <== proofPaths[i][j];
         }
 
         merkleProofs[i].root === commitment;
     }
 
-    signal distances[treeSize];
-    component distCalcs[treeSize];
-    for (var i = 0; i < treeSize; i++) {
+    signal distances[numElements];
+    component distCalcs[numElements];
+    for (var i = 0; i < numElements; i++) {
         distCalcs[i] = L1Distance(numAttrs);
 
         for (var j = 1; j < numAttrs + 1; j++) {
-            distCalcs[i].x[j - 1] <== sortedRows[i][j];
+            distCalcs[i].x[j - 1] <== sortedCoordinates[i][j];
             distCalcs[i].y[j - 1] <== x[j - 1];
         }
 
         distances[i] <== distCalcs[i].distance;
     }
 
-    component verifySorted = IsSorted(treeSize);
-    for (var i = 0; i < treeSize; i++) {
+    component verifySorted = IsSorted(numElements);
+    for (var i = 0; i < numElements; i++) {
         verifySorted.x[i] <== distances[i];
     }
     verifySorted.out === 1;
 
-    signal output neighbours[kNeighbours][numAttrs];
     log("Closest", kNeighbours, "neighbours:");
     for (var i = 0; i < kNeighbours; i++) {
-        log("Neighbour", i + 1, "coordinates:");
-        for (var j = 1; j <= numAttrs; j++) {
-            neighbours[i][j - 1] <== sortedRows[i][j];
-            log(neighbours[i][j - 1]);
+        log();
+        log("Neighbour", i + 1);
+        for (var j = 0; j < numAttrs + 2; j++) {
+            neighbours[i][j] <== sortedCoordinates[i][j];
+            if (j == 0) {
+                log("index:");
+            } else if (j == 1) {
+                log("coordinates:");
+            } else if (j == numAttrs + 1) {
+                log("class:");
+            }
+            log(neighbours[i][j]);
         }
     }
 }
-
-// Za domaci napravi da radi sa realnim brojevima, tj da javascript spremi odgovarajuce brojeve
-// Takodje napravi program koji ucita csv ili excel i izbaci proof za k najblizih instanci
-// Bonus: Klasifikator gde imamo dve klase i odredjuje se kojoj pripada -> moze u novi fajl
-
-component main = KNN(8, 3, 372183, 4, 3);

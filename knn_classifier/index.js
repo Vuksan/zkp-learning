@@ -7,27 +7,29 @@ const fs = require('fs');
 const tree = new IncrementalQuinTree(4, 0, 2, poseidon);
 
 const data = [
-    [5, 3, 2],
-    [1, 2, 3],
-    [2, 3, 4],
-    [0, 1, 9],
-    [2, 3, 2],
-    [1, 9, 8],
-    [8, 6, 4],
-    [3, 3, 3]
+    { coordinates: [5, 3, 2], class: 0 },
+    { coordinates: [1, 2, 3], class: 1 },
+    { coordinates: [2, 3, 4], class: 0 },
+    { coordinates: [0, 1, 9], class: 0 },
+    { coordinates: [2, 3, 2], class: 1 },
+    { coordinates: [1, 9, 8], class: 1 },
+    { coordinates: [8, 6, 4], class: 0 },
+    { coordinates: [3, 3, 3], class: 0 }
 ];
 
-const originalData = [...data];
+const x = [1, 1, 1];
+
+const originalCoordinates = [...data.map(d => d.coordinates)];
 
 for (let i = 0; i < data.length; i += 1) {
-    data[i] = [i + 1, ...data[i]];
+    data[i].coordinates = [i + 1, ...data[i].coordinates];
 }
 
-for (let i = 0; i < originalData.length; i += 1) {
+for (let i = 0; i < data.length; i += 1) {
     tree.insert(
         poseidon([
-            i + 1,
-            ...originalData[i]
+            ...data[i].coordinates,
+            data[i].class
         ])
     );
 }
@@ -40,30 +42,28 @@ function distance(obj, x) {
     return d;
 }
 
-const x = [1, 1, 1];
-
 const checksum = data.reduce((acc, curr) => {
-    return (acc + curr[0]) % 372183; // we need modul since circom works under modul, so we don't overflow
+    return (acc + curr.coordinates[0]) % 372183; // we need modul since circom works under modul, so we don't overflow
 }, 0);
 console.log('Checksum: ', checksum);
 
 const checkprod = data.reduce((acc, curr) => {
-    return (acc * curr[0]) % 372183; // we need modul since circom works under modul, so we don't overflow
+    return (acc * curr.coordinates[0]) % 372183; // we need modul since circom works under modul, so we don't overflow
 }, 1);
 console.log('Checkprod: ', checkprod);
 
-console.log('Distance: ', originalData.map((row) => distance(row, x)));
+console.log('Distance: ', originalCoordinates.map((row) => distance(row, x)));
 
 const sorted = data.sort((a, b) => {
     // Lose the index to calculate distance
-    return distance(a.slice(1), x) - distance(b.slice(1), x);
+    return distance(a.coordinates.slice(1), x) - distance(b.coordinates.slice(1), x);
 });
 console.log('Distance sorted: ', sorted);
-const sortedIndexes = sorted.map(row => row[0]);
-console.log('Sorted indexes: ', sorted.map(row => row[0]));
+const sortedIndexes = sorted.map(row => row.coordinates[0]);
+console.log('Sorted indexes: ', sortedIndexes);
 
-console.log('Num neighbours: ', originalData.length);
-console.log('Num coordinates: ', originalData[0].length);
+console.log('Num neighbours: ', originalCoordinates.length);
+console.log('Num coordinates: ', originalCoordinates[0].length);
 console.log('Commitment: ', tree.root);
 
 const proofPaths = [];
@@ -78,16 +78,21 @@ for (const index of sortedIndexes) {
 // console.log('Proof paths:', proofPaths);
 // console.log('Proof indices:', proofIndices);
 
+// Append class to the end of coordinates array
+for (let i = 0; i < sorted.length; i += 1) {
+    sorted[i].coordinates.push(data[i].class);
+}
+
 const circomInputs = {
     checksum: `${checksum}`,
     checkprod: `${checkprod}`,
-    proofPaths,
+    proofPaths: proofPaths.map(path => path.map(x => x[0])),
     proofIndices: proofIndices.map(indices => indices.map(x => `${x}`)),
     commitment: tree.root,
-    sortedRows: sorted.map(x => x.map(x => `${x}`)),
+    sortedCoordinates: sorted.map(x => x.coordinates.map(x => `${x}`)),
     x: x.map(el => `${el}`)
 }
 
-console.log(JSON.stringify(stringifyBigInts(circomInputs), null, 2));
+// console.log(JSON.stringify(stringifyBigInts(circomInputs), null, 2));
 
 fs.writeFileSync('inputs.json', JSON.stringify(stringifyBigInts(circomInputs), null, 2));
