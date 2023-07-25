@@ -56,8 +56,8 @@ template BubbleSort(arraySize, numBits) {
         sortedArray[i] <== tmpArray[i];
         log(sortedArray[i]);
     }
-    // Required iteration is 1 more because the algorithm needs one last pass to determine that everything is sorted
     log("Performed iterations:", arraySize);
+    // Required iteration is 1 more because the algorithm needs one last pass to determine that everything is sorted
     log("Required iterations:", actualIterations + 1);
 }
 
