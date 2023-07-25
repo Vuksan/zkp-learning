@@ -4,13 +4,17 @@ const ff = require('./incrementalquintree/node_modules/ffjavascript');
 const stringifyBigInts = (obj) => ff.utils.stringifyBigInts(obj);
 const fs = require('fs');
 
-const tree = new IncrementalQuinTree(3, 0, 2, poseidon);
+const tree = new IncrementalQuinTree(4, 0, 2, poseidon);
 
 const data = [
     [5, 3, 2],
     [1, 2, 3],
     [2, 3, 4],
-    [0, 1, 9]
+    [0, 1, 9],
+    [2, 3, 2],
+    [1, 9, 8],
+    [8, 6, 4],
+    [3, 3, 3]
 ];
 
 const originalData = [...data];
@@ -39,12 +43,12 @@ function distance(obj, x) {
 const x = [1, 1, 1];
 
 const checksum = data.reduce((acc, curr) => {
-    return (acc + curr[0]) % 32767; // we need modul since circom works under modul, so we don't overflow
+    return (acc + curr[0]) % 372183; // we need modul since circom works under modul, so we don't overflow
 }, 0);
 console.log('Checksum: ', checksum);
 
 const checkprod = data.reduce((acc, curr) => {
-    return (acc * curr[0]) % 32767; // we need modul since circom works under modul, so we don't overflow
+    return (acc * curr[0]) % 372183; // we need modul since circom works under modul, so we don't overflow
 }, 1);
 console.log('Checkprod: ', checkprod);
 

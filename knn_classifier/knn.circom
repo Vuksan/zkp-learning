@@ -83,30 +83,30 @@ template Checkprod(size, mod) {
     out <== prod[size - 1];
 }
 
-template KNN(size, numAttrs, mod, treeDepth, kNeighbours) {
+template KNN(treeSize, numAttrs, mod, treeDepth, kNeighbours) {
     signal input checksum;
     signal input checkprod;
-    signal input proofPaths[size][treeDepth][1];
-    signal input proofIndices[size][treeDepth][1];
+    signal input proofPaths[treeSize][treeDepth][1];
+    signal input proofIndices[treeSize][treeDepth][1];
     signal input commitment;
-    signal input sortedRows[size][numAttrs + 1];
+    signal input sortedRows[treeSize][numAttrs + 1];
     signal input x[numAttrs];
 
-    component checksumVerifier = Checksum(size, mod);
-    for (var i = 0; i < size; i++) {
+    component checksumVerifier = Checksum(treeSize, mod);
+    for (var i = 0; i < treeSize; i++) {
         checksumVerifier.arr[i] <== sortedRows[i][0];
     }
     checksumVerifier.out === checksum;
 
-    component checkprodVerifier = Checkprod(size, mod);
-    for (var i = 0; i < size; i++) {
+    component checkprodVerifier = Checkprod(treeSize, mod);
+    for (var i = 0; i < treeSize; i++) {
         checkprodVerifier.arr[i] <== sortedRows[i][0];
     }
     checkprodVerifier.out === checkprod;
 
-    component merkleProofs[size];
-    component merkleLeafHashers[size];
-    for (var i = 0; i < size; i++) {
+    component merkleProofs[treeSize];
+    component merkleLeafHashers[treeSize];
+    for (var i = 0; i < treeSize; i++) {
         merkleProofs[i] = MerkleTreeInclusionProof(treeDepth);
         merkleLeafHashers[i] = Poseidon(numAttrs + 1);
 
@@ -123,9 +123,9 @@ template KNN(size, numAttrs, mod, treeDepth, kNeighbours) {
         merkleProofs[i].root === commitment;
     }
 
-    signal distances[size];
-    component distCalcs[size];
-    for (var i = 0; i < size; i++) {
+    signal distances[treeSize];
+    component distCalcs[treeSize];
+    for (var i = 0; i < treeSize; i++) {
         distCalcs[i] = L1Distance(numAttrs);
 
         for (var j = 1; j < numAttrs + 1; j++) {
@@ -136,8 +136,8 @@ template KNN(size, numAttrs, mod, treeDepth, kNeighbours) {
         distances[i] <== distCalcs[i].distance;
     }
 
-    component verifySorted = IsSorted(size);
-    for (var i = 0; i < size; i++) {
+    component verifySorted = IsSorted(treeSize);
+    for (var i = 0; i < treeSize; i++) {
         verifySorted.x[i] <== distances[i];
     }
     verifySorted.out === 1;
@@ -157,4 +157,4 @@ template KNN(size, numAttrs, mod, treeDepth, kNeighbours) {
 // Takodje napravi program koji ucita csv ili excel i izbaci proof za k najblizih instanci
 // Bonus: Klasifikator gde imamo dve klase i odredjuje se kojoj pripada -> moze u novi fajl
 
-component main = KNN(4, 3, 372183, 3, 3);
+component main = KNN(8, 3, 372183, 4, 3);
