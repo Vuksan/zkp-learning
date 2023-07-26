@@ -3,21 +3,41 @@ const { poseidon } = require('./incrementalquintree/node_modules/circomlib');
 const ff = require('./incrementalquintree/node_modules/ffjavascript');
 const stringifyBigInts = (obj) => ff.utils.stringifyBigInts(obj);
 const fs = require('fs');
+const xlsx = require('xlsx');
+const { exec } = require('child_process');
+const { error } = require('console');
+const { stdout, stderr } = require('process');
 
 const tree = new IncrementalQuinTree(4, 0, 2, poseidon);
 
-const data = [
-    { coordinates: [5, 3, 2], class: 0 },
-    { coordinates: [1, 2, 3], class: 1 },
-    { coordinates: [2, 3, 4], class: 0 },
-    { coordinates: [0, 1, 9], class: 0 },
-    { coordinates: [2, 3, 2], class: 1 },
-    { coordinates: [1, 9, 8], class: 1 },
-    { coordinates: [8, 6, 4], class: 0 },
-    { coordinates: [3, 3, 3], class: 0 }
-];
+// Read the inputs from the file
+const workbook = xlsx.readFile('knn_classifier_inputs.xlsx');
+const workbook_sheets = workbook.SheetNames;
+// First sheet contains neighbours
+const neighbours = xlsx.utils.sheet_to_json(workbook.Sheets[workbook_sheets[0]]);
+if (neighbours.length != 8) {
+    console.error('There should be 8 neighbours!');
+    process.exit(1);
+}
+var data = [];
+for (var i = 0; i < neighbours.length; i += 1) {
+    if (neighbours[i].class < 0 || neighbours[i].class > 1) {
+        console.error('There should only be two classes: 0 and 1!');
+        process.exit(1);
+    }
+    data[i] = {
+        coordinates: [neighbours[i].x, neighbours[i].y, neighbours[i].z],
+        class: neighbours[i].class
+    }
+}
 
-const x = [1, 1, 1];
+// Second sheet contains value of x
+const input = xlsx.utils.sheet_to_json(workbook.Sheets[workbook_sheets[1]]);
+if (input.length > 1) {
+    console.error('There should be only one input!');
+    process.exit(1);
+}
+const x = [input[0].x, input[0].y, input[0].z];
 
 const originalCoordinates = [...data.map(d => d.coordinates)];
 
@@ -94,5 +114,19 @@ const circomInputs = {
 }
 
 // console.log(JSON.stringify(stringifyBigInts(circomInputs), null, 2));
+const inputsFilename = 'inputs.json';
 
-fs.writeFileSync('inputs.json', JSON.stringify(stringifyBigInts(circomInputs), null, 2));
+fs.writeFileSync(inputsFilename, JSON.stringify(stringifyBigInts(circomInputs), null, 2));
+
+// Generate the witness
+exec(`cd knn_classifier_js && node generate_witness.js knn_classifier.wasm ../${inputsFilename} witness.wtns`, (error, stdout, stderr) => {
+    if (error) {
+        console.log(`error: ${error.message}`);
+        return;
+    }
+    if (stderr) {
+        console.log(`stderr: ${stderr}`);
+        return;
+    }
+    console.log(stdout);
+});
