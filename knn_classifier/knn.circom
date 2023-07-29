@@ -11,7 +11,7 @@ template AbsDiff() {
 
     component diffComp = GreaterEqThan(32);
     diffComp.in[0] <== a;
-    diffComp.in[1] <== a;
+    diffComp.in[1] <== b;
 
     signal tmp1 <== diffComp.out * (a - b);
     signal tmp2 <== (1 - diffComp.out) * (b - a);

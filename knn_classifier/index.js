@@ -8,17 +8,37 @@ const { exec } = require('child_process');
 const { error } = require('console');
 const { stdout, stderr } = require('process');
 
+function maxDigitsAfterDecimal(arr) {
+    var largestNumDigits = 0;
+    for (var i = 0; i < arr.length; i += 1) {
+        if (!Number.isInteger(arr[i])) {
+            let dec = arr[i].toString().split('.');
+            let decLength = dec[1].length;
+            largestNumDigits = largestNumDigits < decLength ? decLength : largestNumDigits;
+        }
+    }
+    return largestNumDigits;
+}
+
+function normalizeData(arr, numDecimalDigits) {
+    var normalized = [];
+    for (var i = 0; i < arr.length; i += 1) {
+        normalized[i] = arr[i] * Math.pow(10, numDecimalDigits);
+    }
+
+    return normalized;
+}
+
 const tree = new IncrementalQuinTree(4, 0, 2, poseidon);
 
 // Read neighbours from the file
-const data = parse(fs.readFileSync("input_neighbours.csv"), {delimiter: ",", trim: true, from_line: 2, cast: true});
-console.log(data);
-if (data.length != 8) {
+const neighbours = parse(fs.readFileSync("input_neighbours.csv"), {delimiter: ",", trim: true, from_line: 2, cast: true});
+if (neighbours.length != 8) {
     console.error('There should be 8 neighbours!');
     process.exit(1);
 }
-for (var i = 0; i < data.length; i += 1) {
-    if (data[i][3] < 0 || data[i][3] > 1) {
+for (var i = 0; i < neighbours.length; i += 1) {
+    if (neighbours[i][3] < 0 || neighbours[i][3] > 1) {
         console.error('There should only be two classes: 0 and 1!');
         process.exit(1);
     }
@@ -31,9 +51,17 @@ if (input.length > 1) {
     process.exit(1);
 }
 const x = input[0];
-console.log(x);
 
-const originalCoordinates = [...data.map(d => d.slice(0,3))];
+const originalCoordinates = [...neighbours.map(n => n.slice(0,3))];
+
+// TODO: Normalize data to integers, since circom and poseidon only work with integers
+const maxDecimalDigits = maxDigitsAfterDecimal([...neighbours.flat(), ...x]);
+const xInt = normalizeData(x, maxDecimalDigits);
+const data = [];
+for (var i = 0; i < neighbours.length; i += 1) {
+    data[i] = normalizeData(neighbours[i].slice(0, 3), maxDecimalDigits);
+    data[i].push(neighbours[i][3]);
+}
 
 for (let i = 0; i < data.length; i += 1) {
     data[i] = [i + 1, ...data[i]];
@@ -65,7 +93,7 @@ console.log('Distance: ', originalCoordinates.map((row) => distance(row, x)));
 
 const sorted = data.sort((a, b) => {
     // Lose the index and class to calculate distance
-    return distance(a.slice(1, 4), x) - distance(b.slice(1, 4), x);
+    return distance(a.slice(1, 4), xInt) - distance(b.slice(1, 4), xInt);
 });
 console.log('Distance sorted: ', sorted);
 const sortedIndexes = sorted.map(row => row[0]);
@@ -94,7 +122,7 @@ const circomInputs = {
     proofIndices: proofIndices.map(indices => indices.map(x => `${x}`)),
     commitment: tree.root,
     sortedCoordinates: sorted.map(x => x.map(x => `${x}`)),
-    x: x.map(el => `${el}`)
+    x: xInt.map(el => `${el}`)
 }
 
 // console.log(JSON.stringify(stringifyBigInts(circomInputs), null, 2));
