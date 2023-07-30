@@ -1,3 +1,6 @@
 [submodule "knn_classifier/incrementalquintree"]
 	path = knn_classifier/incrementalquintree
 	url = git@github.com:privacy-scaling-explorations/incrementalquintree.git
+[submodule "zicket/incrementalquintree"]
+	path = zicket/incrementalquintree
+	url = git@github.com:privacy-scaling-explorations/incrementalquintree.git

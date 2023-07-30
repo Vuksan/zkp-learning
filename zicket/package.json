@@ -1,0 +1,17 @@
+{
+  "name": "zicket",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "postinstall": "cd incrementalquintree && npm ci",
+    "start": "node index.js",
+    "build": "cd incrementalquintree && npm run prepare",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "circomlib": "^2.0.5"
+  }
+}
