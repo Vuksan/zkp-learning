@@ -29,7 +29,6 @@ template TokenAirdrop(treeDepth) {
     // Nullifier making sure that a single claim cannot be claimed multiple times
     signal input claimNullifier;
 
-    signal output isTreeMember;
     // Hash of the user's address and claim nullifier which should be marked as used on the smart contract
     signal output nullifierHash;
 
@@ -46,7 +45,6 @@ template TokenAirdrop(treeDepth) {
     }
     log("User is a member of the merkle tree:", membershipProof.out);
     membershipProof.out === 1;
-    isTreeMember <== membershipProof.out;
 
     // Calculate nullifier hash
     component poseidon = Poseidon(2);
