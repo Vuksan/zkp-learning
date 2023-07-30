@@ -11,7 +11,7 @@
 
 # How to run
 
-1. Enter inputs in a file `knn_classifier_inputs.xlsx`
+1. Enter inputs in a files `input_neighbours.csv` and `input_x.csv`
 Note: The program only supports two classes of neighbours (0 and 1)
 
 2. Generate the witness:  
