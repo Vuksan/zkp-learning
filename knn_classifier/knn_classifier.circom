@@ -3,6 +3,7 @@ pragma circom  2.1.4;
 include "./knn.circom";
 include "./node_modules/circomlib/circuits/comparators.circom";
 include "./node_modules/circomlib/circuits/mux1.circom";
+include "./k_means_clustering/k_means_clustering.circom";
 
 template KNNClassifier(numElements, numAttrs, mod, treeDepth, kNeighbours) {
     signal input checksum;
@@ -13,9 +14,27 @@ template KNNClassifier(numElements, numAttrs, mod, treeDepth, kNeighbours) {
     // sorted coordinates contain coordinate index as a first element, 
     // then x,y,z coordinates and the class as the last element
     signal input sortedCoordinates[numElements][numAttrs + 2];
+    signal input centroids[2][numAttrs];
     signal input x[numAttrs];
     
     signal output xClass;
+
+    // Check if coordinates are clustered correctly
+    component kMeans[numElements];
+    for (var i = 0; i < numElements; i++) {
+        kMeans[i] = KMeansClustering(numAttrs);
+
+        for (var j = 0; j < numAttrs; j++) {
+            kMeans[i].element[j] <== sortedCoordinates[i][j + 1]; // we skip the index and class
+        }
+        for (var c = 0; c < 2; c++) {
+            for (var j = 0; j < numAttrs; j++) {
+                kMeans[i].centroids[c][j] <== centroids[c][j];
+            }
+        }
+
+        sortedCoordinates[i][numAttrs + 1] === kMeans[i].closestCentroidIndex;
+    }
     
     component knn = KNN(numElements, numAttrs, mod, treeDepth, kNeighbours);
     knn.checksum <== checksum;
@@ -36,10 +55,9 @@ template KNNClassifier(numElements, numAttrs, mod, treeDepth, kNeighbours) {
 
     // We take class for each of the closest neighbours
     // and find which one has the most occurances
-    var numClasses = 2;
-    var classElements[numClasses];
-    component isEqual[numClasses][kNeighbours];
-    for (var c = 0; c < numClasses; c++) {
+    var classElements[2];
+    component isEqual[2][kNeighbours];
+    for (var c = 0; c < 2; c++) {
         for (var n = 0; n < kNeighbours; n++) {
             isEqual[c][n] = IsEqual();
             isEqual[c][n].in[0] <== c;

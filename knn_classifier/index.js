@@ -4,7 +4,7 @@ const ff = require('./incrementalquintree/node_modules/ffjavascript');
 const stringifyBigInts = (obj) => ff.utils.stringifyBigInts(obj);
 const fs = require('fs');
 const { parse } = require('csv-parse/sync');
-const { exec } = require('child_process');
+const { exec, execSync } = require('child_process');
 const { error } = require('console');
 const { stdout, stderr } = require('process');
 
@@ -23,16 +23,27 @@ function maxDigitsAfterDecimal(arr) {
 function normalizeData(arr, numDecimalDigits) {
     var normalized = [];
     for (var i = 0; i < arr.length; i += 1) {
-        normalized[i] = arr[i] * Math.pow(10, numDecimalDigits);
+        var tmp = arr[i] * Math.pow(10, numDecimalDigits);
+        normalized[i] = Math.round(tmp);
     }
 
     return normalized;
 }
 
-const tree = new IncrementalQuinTree(4, 0, 2, poseidon);
+// Execute k-means clustering to determine the element classes
+execSync(`cd k_means_clustering && python3 k_means_clustering.py`, (error, stdout, stderr) => {
+    if (error) {
+        console.log(`error: ${error.message}`);
+        return;
+    }
+    if (stderr) {
+        console.log(`stderr: ${stderr}`);
+        return;
+    }
+});
 
 // Read neighbours from the file
-const neighbours = parse(fs.readFileSync("input_neighbours.csv"), {delimiter: ",", trim: true, from_line: 2, cast: true});
+const neighbours = parse(fs.readFileSync("k_means_clustering/neighbours_clustered.csv"), {delimiter: ",", trim: true, from_line: 2, cast: true});
 if (neighbours.length != 8) {
     console.error('There should be 8 neighbours!');
     process.exit(1);
@@ -45,16 +56,23 @@ for (var i = 0; i < neighbours.length; i += 1) {
 }
 
 // Read the value of x from the file
-const input = parse(fs.readFileSync("input_x.csv"), {delimiter: ",", trim: true, from_line: 2, cast: true});
+const input = parse(fs.readFileSync("k_means_clustering/x.csv"), {delimiter: ",", trim: true, from_line: 2, cast: true});
 if (input.length > 1) {
     console.error('There should be only one input!');
     process.exit(1);
 }
 const x = input[0];
 
+// Read centroids from the file
+const rawCentroids = parse(fs.readFileSync("k_means_clustering/neighbours_centroids.csv"), {delimiter: ",", trim: true, from_line: 2, cast: true});
+if (rawCentroids.length != 2) {
+    console.error('There should be two centroids!');
+    process.exit(1);
+}
+
 const originalCoordinates = [...neighbours.map(n => n.slice(0,3))];
 
-// TODO: Normalize data to integers, since circom and poseidon only work with integers
+// Normalize data to integers, since circom and poseidon only work with integers
 const maxDecimalDigits = maxDigitsAfterDecimal([...neighbours.flat(), ...x]);
 const xInt = normalizeData(x, maxDecimalDigits);
 const data = [];
@@ -62,10 +80,17 @@ for (var i = 0; i < neighbours.length; i += 1) {
     data[i] = normalizeData(neighbours[i].slice(0, 3), maxDecimalDigits);
     data[i].push(neighbours[i][3]);
 }
+// Normalize centroids as well
+const centroids = [];
+for (var i = 0; i < rawCentroids.length; i += 1) {
+    centroids[i] = normalizeData(rawCentroids[i], maxDecimalDigits);
+}
 
 for (let i = 0; i < data.length; i += 1) {
     data[i] = [i + 1, ...data[i]];
 }
+
+const tree = new IncrementalQuinTree(4, 0, 2, poseidon);
 
 for (let i = 0; i < data.length; i += 1) {
     tree.insert(poseidon(data[i]));
@@ -89,15 +114,15 @@ const checkprod = data.reduce((acc, curr) => {
 }, 1);
 console.log('Checkprod: ', checkprod);
 
-console.log('Distance: ', originalCoordinates.map((row) => distance(row, x)));
+// console.log('Distance: ', originalCoordinates.map((row) => distance(row, x)));
 
 const sorted = data.sort((a, b) => {
     // Lose the index and class to calculate distance
     return distance(a.slice(1, 4), xInt) - distance(b.slice(1, 4), xInt);
 });
-console.log('Distance sorted: ', sorted);
+// console.log('Distance sorted: ', sorted);
 const sortedIndexes = sorted.map(row => row[0]);
-console.log('Sorted indexes: ', sortedIndexes);
+console.log('Sorted indexes by distance: ', sortedIndexes);
 
 console.log('Num neighbours: ', originalCoordinates.length);
 console.log('Num coordinates: ', originalCoordinates[0].length);
@@ -122,6 +147,7 @@ const circomInputs = {
     proofIndices: proofIndices.map(indices => indices.map(x => `${x}`)),
     commitment: tree.root,
     sortedCoordinates: sorted.map(x => x.map(x => `${x}`)),
+    centroids: centroids.map(x => x.map(x => `${x}`)),
     x: xInt.map(el => `${el}`)
 }
 

@@ -2,39 +2,8 @@ pragma circom  2.1.4;
 
 include "./node_modules/circomlib/circuits/comparators.circom";
 include "./incrementalMerkleTree.circom";
+include "./distance.circom";
 include "./node_modules/circomlib/circuits/poseidon.circom";
-
-template AbsDiff() {
-    signal input a;
-    signal input b;
-    signal output out;
-
-    component diffComp = GreaterEqThan(32);
-    diffComp.in[0] <== a;
-    diffComp.in[1] <== b;
-
-    signal tmp1 <== diffComp.out * (a - b);
-    signal tmp2 <== (1 - diffComp.out) * (b - a);
-    out <== tmp1 + tmp2;
-}
-
-template L1Distance(size) {
-    signal input x[size];
-    signal input y[size];
-    signal output distance;
-
-    var totalDist = 0;
-    component absDiffs[size];
-
-    for (var i = 0; i < size; i++) {
-        absDiffs[i] = AbsDiff();
-        absDiffs[i].a <== x[i];
-        absDiffs[i].b <== y[i];
-        totalDist += absDiffs[i].out;
-    }
-
-    distance <== totalDist;
-}
 
 template IsSorted(size) {
     signal input x[size];
@@ -146,20 +115,17 @@ template KNN(numElements, numAttrs, mod, treeDepth, kNeighbours) {
     }
     verifySorted.out === 1;
 
-    log("Closest", kNeighbours, "neighbours:");
+    log("\nClosest", kNeighbours, "neighbours:");
     for (var i = 0; i < kNeighbours; i++) {
         log();
         log("Neighbour", i + 1);
         for (var j = 0; j < numAttrs + 2; j++) {
             neighbours[i][j] <== sortedCoordinates[i][j];
             if (j == 0) {
-                log("index:");
-            } else if (j == 1) {
-                log("coordinates:");
+                log("index:", neighbours[i][j]);
             } else if (j == numAttrs + 1) {
-                log("class:");
+                log("class:", neighbours[i][j]);
             }
-            log(neighbours[i][j]);
         }
     }
 }
