@@ -1,0 +1,6 @@
+{
+    "weightedPortfolio": [5, 0, 12, 14, 8, 40, 0, 21, 0, 0],
+    "riskConstraints": [9, 7, 4, 3, 5, 1, 2, 6, 7, 3],
+    "weightedRiskConstraints": [45, 0, 48, 42, 40, 40, 0, 126, 0, 0],
+    "riskLimits": [100, 450]
+}
